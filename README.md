@@ -56,7 +56,7 @@ python train_agent.py --iterations 50 --lr 1e-3
 
 ```bash
 python run_mcts.py --model ./saved_models/model_20250415_it50.keras \
-                    --scramble "R U2 R' U'"
+                    --scramble "R U R' U'"
 ```
 
 - Prints the scramble and solution moves found by MCTS and BFS fallback.
