@@ -71,10 +71,10 @@ python run_mcts.py --model ./saved_models/model_20250415_it50.keras \
 ### 3. Sample Plots
 - Loss Plots
 <p align="center">
-  <img src="pictures/loss.png" alt="Loss" width="300" />
+  <img src="pictures/loss.png" alt="Loss" width="500" />
 </p>p
 - Reward Plots
 <p align="center">
-  <img src="pictures/reward.png" alt="Reward" width="300" />
+  <img src="pictures/reward.png" alt="Reward" width="500" />
 </p>p
 
