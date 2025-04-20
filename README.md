@@ -1,8 +1,8 @@
 # Rubik’s Cube MCTS Runner
 
+![image](pictures/cube.jpeg)
+
 This repository provides scripts to train a policy-value network for solving the Rubik’s Cube and to run Monte Carlo Tree Search (MCTS) using the trained model.
-
-
 
 ## Features
 
