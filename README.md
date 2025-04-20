@@ -1,1 +1,1 @@
-# DS-GA3001-Reinforcement-Learning-Rubiks-Cube-Solver
+Rubiks Cube Solver Using Deep Reinforcement Learning and Monte Carlo Search Tree
