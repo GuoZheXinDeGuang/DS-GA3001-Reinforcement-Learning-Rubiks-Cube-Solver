@@ -3,67 +3,83 @@ import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 
-from model      import create_dense_model, setup_optimizer
+from model import create_dense_model, setup_optimizer
 from cube_agent import CubeAgent
 
-# Directory to save models and plots
 SAVE_DIR = "/content/drive/My Drive/Spring 2025/DS3001 Reinforcement Learning/saved_models"
 os.makedirs(SAVE_DIR, exist_ok=True)
 
-def train_rubiks_agent(iterations: int = 50,
-                       lr: float = 1e-3,
-                       debug: bool = False) -> None:
-    """
-    Train a Rubik's Cube policy-value network, save model checkpoints,
-    and output a combined loss-and-reward plot.
-    """
+def train_rubiks_agent(iterations=50, lr=1e-3, debug=False):
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    state_dim  = 20 * 24  # flattened one-hot size
+    model_path = os.path.join(SAVE_DIR, f"rubiks_model_{timestamp}.keras")
 
-    # Build and compile the network
-    net = create_dense_model(state_dim)
-    net = setup_optimizer(net, lr)
+    state_dim = 20 * 24
+    model = create_dense_model(state_dim)
+    model = setup_optimizer(model, lr)
 
-    # Debug mode reduces depth and batch size
-    depth      = 5 if debug else 10
+    depth = 5 if debug else 10
     batch_size = 3 if debug else 5
 
-    all_losses  = []
+    all_losses = []
     avg_rewards = []
 
-    for it in range(1, iterations + 1):
-        print(f"Iteration {it}/{iterations} ...")
-        agent = CubeAgent(max_depth=depth, batch_size=batch_size)
-        envs  = agent.collect()  # List of RubiksEnv instances
+    for it in range(iterations):
+        print(f"Iteration {it + 1}/{iterations}...")
 
-        # Collect state vectors and rewards
-        states  = np.stack([env.reset(0) for env in envs])
-        rewards = np.array([env.reward()    for env in envs])
-        actions = np.zeros(len(envs), int)  # dummy policy labels
+        cube_agent = CubeAgent(max_depth=depth, batch_size=batch_size)
+        cube_agent.scramble_cubes_for_data()
+        cubes = np.array(cube_agent.env).flatten()
 
-        history = net.fit(
-            states,
-            {'value': rewards, 'policy': actions},
+        encoded_states = np.empty((batch_size * depth, state_dim))
+        values = np.empty((batch_size * depth, 1))
+        policies = np.empty(batch_size * depth)
+        rewards_per_state = np.empty(batch_size * depth)
+
+        i = 0
+        for state in cubes:
+            values_for_state = np.zeros(len(state.action_space))
+            immediate_rewards = []
+            encoded_states[i] = state.get_one_hot_state().flatten()
+            actions = state.action_space
+            start_state = state.cube.copy()
+
+            for j, action in enumerate(actions):
+                _, reward = state.step(j)
+                immediate_rewards.append(reward)
+                child_state_encoded = state.get_one_hot_state().flatten()
+                state.set_state(start_state)
+
+                value, policy = model.predict(child_state_encoded[None, :], verbose=0)
+                values_for_state[j] = value[0][0] + reward
+
+            values[i] = values_for_state.max()
+            policies[i] = values_for_state.argmax()
+            rewards_per_state[i] = np.max(immediate_rewards)
+            i += 1
+
+        history = model.fit(
+            encoded_states,
+            {"output_policy": policies, "output_value": values},
             epochs=3,
             verbose=1
         )
 
         all_losses.extend(history.history['loss'])
-        avg_rewards.append(rewards.mean())
+        avg_rewards.append(np.mean(rewards_per_state))
 
-        # Save model checkpoint each iteration
-        model_file = os.path.join(SAVE_DIR, f"model_{timestamp}_it{it}.keras")
-        net.save(model_file)
-        print(f"Saved model to: {model_file}")
+        model.save(model_path)
+        print(f"Model saved to: {model_path}")
 
-    # Create and save combined loss/reward plot
+    # Combined loss and reward plot
     plt.figure(figsize=(8, 6))
     plt.plot(all_losses, label='Loss per epoch')
     xs = np.linspace(0, len(all_losses), len(avg_rewards))
     plt.plot(xs, avg_rewards, label='Avg reward per iteration')
     plt.legend()
     plt.title("Training Metrics")
-    out = os.path.join(SAVE_DIR, f"training_metrics_{timestamp}.png")
-    plt.savefig(out)
+
+    metrics_path = os.path.join(SAVE_DIR, f"training_metrics_{timestamp}.png")
+    plt.savefig(metrics_path)
     plt.close()
-    print(f"Saved training plot to: {out}")
+
+    print(f"Training plot saved to: {metrics_path}")
