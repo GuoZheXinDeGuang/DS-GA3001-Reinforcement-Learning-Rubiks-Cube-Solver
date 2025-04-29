@@ -6,19 +6,19 @@ import tensorflow as tf
 from tensorflow import keras
 from collections import deque
 import random
-import time  # 添加时间模块用于跟踪执行时间
+import time  # Add time module for tracking execution time
 
-# 导入新的环境文件
+# Import new environment file
 from dqn_cube_env import DQNRubiksEnv, Move
 
-# 修改保存目录，使用当前目录下的saved_models文件夹
+# Modify save directory to use saved_models folder in current directory
 # SAVE_DIR = "/content/drive/My Drive/Spring 2025/DS3001 Reinforcement Learning/saved_models"
-SAVE_DIR = "./saved_models"  # 使用当前目录下的saved_models文件夹
+SAVE_DIR = "./saved_models"  # Use saved_models folder in current directory
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 class DQNAgent:
     """
-    使用DQN算法的魔方求解智能体
+    Rubik's Cube solving agent using DQN algorithm
     """
     def __init__(self, state_dim, action_dim, 
                  learning_rate=1e-3, 
@@ -29,11 +29,11 @@ class DQNAgent:
                  buffer_size=10000,
                  batch_size=64,
                  update_target_freq=20):
-        # 算法超参数
+        # Algorithm hyperparameters
         self.state_dim = state_dim
         self.action_dim = action_dim
-        self.gamma = gamma  # 折扣因子
-        self.epsilon = epsilon  # 探索率
+        self.gamma = gamma  # Discount factor
+        self.epsilon = epsilon  # Exploration rate
         self.epsilon_min = epsilon_min
         self.epsilon_decay = epsilon_decay
         self.learning_rate = learning_rate
@@ -41,27 +41,27 @@ class DQNAgent:
         self.batch_size = batch_size
         self.update_target_freq = update_target_freq
         
-        # 经验回放缓冲区
+        # Experience replay buffer
         self.memory = deque(maxlen=buffer_size)
         
-        # 创建Q网络和目标网络
+        # Create Q-network and target network
         self.q_network = self._build_model()
         self.target_network = self._build_model()
         
-        # 预编译网络，避免第一次预测时的延迟
-        print("预编译网络...")
+        # Pre-compile networks to avoid first prediction delay
+        print("Pre-compiling networks...")
         dummy_state = np.zeros((1, self.state_dim))
         self.q_network.predict(dummy_state, verbose=0)
         self.target_network.predict(dummy_state, verbose=0)
         
-        self.update_target_network()  # 初始化目标网络权重
+        self.update_target_network()  # Initialize target network weights
         
-        # 训练计数器
+        # Training counter
         self.train_step_counter = 0
     
     def _build_model(self):
-        """构建深度Q网络"""
-        # 使用函数式API创建模型，避免Sequential模型的警告
+        """Build deep Q-network"""
+        # Use functional API to create model, avoid Sequential model warnings
         inputs = keras.Input(shape=(self.state_dim,))
         x = keras.layers.Dense(1024, activation='relu')(inputs)
         x = keras.layers.Dense(512, activation='relu')(x)
@@ -74,15 +74,15 @@ class DQNAgent:
         return model
     
     def update_target_network(self):
-        """更新目标网络的权重为当前Q网络的权重"""
+        """Update target network weights to match current Q-network weights"""
         self.target_network.set_weights(self.q_network.get_weights())
     
     def remember(self, state, action, reward, next_state, done):
-        """将经验存储到回放缓冲区"""
+        """Store experience in replay buffer"""
         self.memory.append((state, action, reward, next_state, done))
     
     def choose_action(self, state):
-        """使用epsilon-greedy策略选择动作"""
+        """Choose action using epsilon-greedy strategy"""
         if np.random.rand() <= self.epsilon:
             return random.randrange(self.action_dim)
         
@@ -90,16 +90,16 @@ class DQNAgent:
         return np.argmax(q_values[0])
     
     def decay_epsilon(self):
-        """衰减探索率"""
+        """Decay exploration rate"""
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
     
     def replay(self):
-        """从经验回放缓冲区中学习"""
+        """Learn from experience replay buffer"""
         if len(self.memory) < self.batch_size:
             return 0
         
-        # 从记忆中采样一个批次
+        # Sample a batch from memory
         minibatch = random.sample(self.memory, self.batch_size)
         
         states = np.zeros((self.batch_size, self.state_dim))
@@ -117,10 +117,10 @@ class DQNAgent:
             states[i] = state
             targets[i] = target
         
-        # 训练网络
+        # Train network
         history = self.q_network.fit(states, targets, epochs=1, verbose=0)
         
-        # 增加训练计数器并更新目标网络
+        # Increment training counter and update target network
         self.train_step_counter += 1
         if self.train_step_counter % self.update_target_freq == 0:
             self.update_target_network()
@@ -132,22 +132,22 @@ def train_rubiks_agent(iterations=50,
                        max_steps=100, 
                        lr=1e-3, 
                        gamma=0.99,
-                       initial_scramble=10,  # 使用正常的打乱深度
+                       initial_scramble=10,  # Use normal scramble depth
                        debug=False):
     """
-    使用DQN算法训练魔方求解智能体，保存模型检查点并输出性能图表
+    Train Rubik's Cube solving agent using DQN algorithm, save model checkpoints and output performance plots
     """
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    state_dim = 480  # 使用新环境中的状态维度
-    action_dim = len(Move)  # 动作空间大小
+    state_dim = 480  # Use state dimension from new environment
+    action_dim = len(Move)  # Action space size
     
-    # 如果是调试模式，减少训练规模
+    # If in debug mode, reduce training scale
     if debug:
         episodes_per_iteration = 10
         max_steps = 20
     
-    print(f"创建DQN智能体，状态维度: {state_dim}, 动作维度: {action_dim}")
-    # 创建DQN智能体
+    print(f"Creating DQN agent, state dimension: {state_dim}, action dimension: {action_dim}")
+    # Create DQN agent
     agent = DQNAgent(
         state_dim=state_dim,
         action_dim=action_dim,
@@ -157,45 +157,45 @@ def train_rubiks_agent(iterations=50,
         batch_size=64 if not debug else 8
     )
     
-    print(f"创建魔方环境...")
-    # 创建环境 - 使用新的DQNRubiksEnv环境
+    print(f"Creating Rubik's Cube environment...")
+    # Create environment - use new DQNRubiksEnv
     env = DQNRubiksEnv()
     
-    # 用于记录训练过程的指标
+    # Metrics for recording training progress
     all_rewards = []
     all_losses = []
     success_rates = []
     
-    print(f"开始训练，总共{iterations}次迭代...")
+    print(f"Starting training, total {iterations} iterations...")
     
     for iteration in range(1, iterations + 1):
         start_time = time.time()
-        print(f"迭代 {iteration}/{iterations} ...")
+        print(f"Iteration {iteration}/{iterations} ...")
         
         iteration_rewards = []
         iteration_success = 0
         iteration_losses = []
         
         for episode in range(episodes_per_iteration):
-            # 重置环境并随机打乱魔方
+            # Reset environment and randomly scramble cube
             start_reset = time.time()
             state = env.reset(initial_scramble)
-            print(f"  Episode {episode+1}: 环境重置用时 {time.time() - start_reset:.2f}秒")
+            print(f"  Episode {episode+1}: Environment reset took {time.time() - start_reset:.2f} seconds")
             
             episode_reward = 0
             solved = False
             
             for step in range(max_steps):
-                # 选择动作
+                # Choose action
                 action = agent.choose_action(state)
                 
-                # 执行动作 - 使用新环境的step方法
+                # Execute action - use new environment's step method
                 next_state, reward, done, info = env.step(action)
                 
-                # 将经验存储到回放缓冲区
+                # Store experience in replay buffer
                 agent.remember(state, action, reward, next_state, done)
                 
-                # 从回放缓冲区中学习
+                # Learn from replay buffer
                 loss = agent.replay()
                 if loss > 0:
                     iteration_losses.append(loss)
@@ -207,24 +207,24 @@ def train_rubiks_agent(iterations=50,
                     solved = True
                     break
             
-            # 衰减探索率
+            # Decay exploration rate
             agent.decay_epsilon()
             
-            # 记录本轮的奖励和成功情况
+            # Record this episode's reward and success
             iteration_rewards.append(episode_reward)
             if solved:
                 iteration_success += 1
                 
-            # 打印进度
-            if (episode + 1) % 5 == 0 or episode == 0:  # 增加日志频率
+            # Print progress
+            if (episode + 1) % 5 == 0 or episode == 0:  # Increase log frequency
                 print(f"  Episode {episode + 1}/{episodes_per_iteration}, "
                       f"Epsilon: {agent.epsilon:.4f}, "
                       f"Mean Reward: {np.mean(iteration_rewards[-min(5, len(iteration_rewards)):]):.2f}, "
-                      f"内存样本: {len(agent.memory)}")
+                      f"Memory samples: {len(agent.memory)}")
         
-        # 确保有数据再计算统计信息
+        # Ensure we have data before calculating statistics
         if iteration_rewards:
-            # 计算当前迭代的平均指标
+            # Calculate current iteration's average metrics
             avg_reward = np.mean(iteration_rewards)
             success_rate = iteration_success / max(1, len(iteration_rewards))
             
@@ -233,70 +233,70 @@ def train_rubiks_agent(iterations=50,
             all_losses.extend(iteration_losses)
             
             iter_time = time.time() - start_time
-            print(f"  迭代 {iteration} 完成，用时 {iter_time:.2f}秒")
-            print(f"  平均奖励: {avg_reward:.2f}")
-            print(f"  成功率: {success_rate:.2%}")
+            print(f"  Iteration {iteration} completed, took {iter_time:.2f} seconds")
+            print(f"  Average reward: {avg_reward:.2f}")
+            print(f"  Success rate: {success_rate:.2%}")
             
-            # 保存模型检查点
+            # Save model checkpoint
             model_file = os.path.join(SAVE_DIR, f"dqn_model_{timestamp}_it{iteration}.keras")
             agent.q_network.save(model_file)
-            print(f"  模型已保存至: {model_file}")
+            print(f"  Model saved to: {model_file}")
             
-            # 每5次迭代生成中间图表
+            # Generate intermediate plots every 5 iterations
             if iteration % 5 == 0 and all_rewards:
                 plot_metrics(all_rewards, success_rates, all_losses, timestamp, iteration)
     
-    # 生成最终的训练指标图表
+    # Generate final training metrics plots
     if all_rewards:
         plot_metrics(all_rewards, success_rates, all_losses, timestamp, iterations, final=True)
 
 def plot_metrics(rewards, success_rates, losses, timestamp, iteration, final=False):
-    """绘制和保存训练指标图表"""
+    """Plot and save training metrics"""
     fig, axs = plt.subplots(3, 1, figsize=(10, 15))
     
-    # 绘制平均奖励
+    # Plot average rewards
     axs[0].plot(rewards, 'b-')
-    axs[0].set_title('每次迭代的平均奖励')
-    axs[0].set_xlabel('迭代次数')
-    axs[0].set_ylabel('平均奖励')
+    axs[0].set_title('Average Reward per Iteration')
+    axs[0].set_xlabel('Iteration')
+    axs[0].set_ylabel('Average Reward')
     axs[0].grid(True)
     
-    # 绘制成功率
+    # Plot success rates
     axs[1].plot(success_rates, 'g-')
-    axs[1].set_title('每次迭代的魔方求解成功率')
-    axs[1].set_xlabel('迭代次数')
-    axs[1].set_ylabel('成功率')
+    axs[1].set_title('Cube Solving Success Rate per Iteration')
+    axs[1].set_xlabel('Iteration')
+    axs[1].set_ylabel('Success Rate')
     axs[1].set_ylim([0, 1])
     axs[1].grid(True)
     
-    # 绘制损失
+    # Plot losses
     if losses:
         axs[2].plot(losses, 'r-', alpha=0.5)
-        axs[2].set_title('训练损失')
-        axs[2].set_xlabel('训练步骤')
-        axs[2].set_ylabel('损失')
+        axs[2].set_title('Training Loss')
+        axs[2].set_xlabel('Training Step')
+        axs[2].set_ylabel('Loss')
         axs[2].grid(True)
     
     plt.tight_layout()
     
-    # 保存图表
+    # Save plot
     plot_type = "final" if final else f"it{iteration}"
     plot_file = os.path.join(SAVE_DIR, f"dqn_training_metrics_{timestamp}_{plot_type}.png")
     plt.savefig(plot_file)
     plt.close()
-    print(f"  训练图表已保存至: {plot_file}")
+    print(f"  Training plots saved to: {plot_file}")
 
 if __name__ == "__main__":
-    # 设置调试模式参数用于更快测试
-    debug_mode = True  # 修改为True可以加快测试
+    # Set debug mode parameters for faster testing
+    debug_mode = True  # Change to True for faster testing
 
-    # 设置默认参数训练魔方智能体
+    # Train Rubik's Cube agent with default parameters
     train_rubiks_agent(
-        iterations=3 if debug_mode else 50,         # 训练迭代次数
-        episodes_per_iteration=5 if debug_mode else 100, # 每次迭代的训练回合数
-        max_steps=20 if debug_mode else 50,         # 每个回合的最大步数
-        lr=0.001,                  # 学习率
-        gamma=0.99,                # 折扣因子
-        initial_scramble=3 if debug_mode else 10,   # 适当减少打乱深度加快测试
-        debug=debug_mode           # 是否开启调试模式
+        iterations=3 if debug_mode else 50,         # Number of training iterations
+        episodes_per_iteration=5 if debug_mode else 100, # Training episodes per iteration
+        max_steps=20 if debug_mode else 50,         # Maximum steps per episode
+        lr=0.001,                  # Learning rate
+        gamma=0.99,                # Discount factor
+        initial_scramble=3 if debug_mode else 10,   # Reduce scramble depth for faster testing
+        debug=debug_mode           # Whether to enable debug mode
     ) 
