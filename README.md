@@ -75,6 +75,6 @@ python run_mcts.py --model ./saved_models/model_20250415_it50.keras \
 </p>
 - Reward Plots
 <p align="center">
-  <img src="pictures/reward.png" alt="Reward" width="500" />
+  <img src="pictures/reward.jpg" alt="Reward" width="500" />
 </p>
 
